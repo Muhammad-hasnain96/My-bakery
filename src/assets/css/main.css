@@ -1,0 +1,340 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── CSS Theme Tokens ─────────────────────────────────── */
+:root {
+  /* Default Dark Theme */
+  --bg-page: #0D0D0D;
+  --bg-surface: #141414;
+  --bg-card: #1A1A1A;
+  --bg-hover: #242424;
+  --bg-input: #1F1F1F;
+  --border-color: #2A2A2A;
+  --text-main: #FFFFFF;
+  --text-muted: #9CA3AF;
+  --text-sub: #6B7280;
+  --color-primary: #C8A96E;
+  --color-primary-light: #E0BD80;
+  --color-primary-dark: #A88850;
+  --shadow-color: rgba(0, 0, 0, 0.5);
+  --hero-overlay: rgba(13, 13, 13, 0.94);
+  --hero-overlay-mid: rgba(13, 13, 13, 0.78);
+}
+
+html.light {
+  /* Elegant Bakery Light Theme (Cream, Warm Ivory & Golden Accents) */
+  --bg-page: #FBF9F5;
+  --bg-surface: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-hover: #F5EFE6;
+  --bg-input: #F8F5F0;
+  --border-color: #E7DECD;
+  --text-main: #1C1917;
+  --text-muted: #57534E;
+  --text-sub: #78716C;
+  --color-primary: #B88E44;
+  --color-primary-light: #D4A757;
+  --color-primary-dark: #916C2E;
+  --shadow-color: rgba(60, 40, 15, 0.08);
+  --hero-overlay: rgba(251, 249, 245, 0.95);
+  --hero-overlay-mid: rgba(251, 249, 245, 0.80);
+}
+
+/* ─── Base Reset ─────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--bg-page);
+  color: var(--text-main);
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ─── Scrollbar ──────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-surface); }
+::-webkit-scrollbar-thumb { background: var(--color-primary); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-primary-light); }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ─── Typography ─────────────────────────────────────── */
+h1, h2, h3, h4 { font-family: 'Playfair Display', serif; }
+
+/* ─── Dynamic Adaptive Theme Utility Classes ─────────── */
+.theme-bg-page     { background-color: var(--bg-page) !important; }
+.theme-bg-surface  { background-color: var(--bg-surface) !important; }
+.theme-bg-card     { background-color: var(--bg-card) !important; }
+.theme-bg-hover    { background-color: var(--bg-hover) !important; }
+.theme-bg-input    { background-color: var(--bg-input) !important; }
+.theme-border      { border-color: var(--border-color) !important; }
+.theme-text-main   { color: var(--text-main) !important; }
+.theme-text-muted  { color: var(--text-muted) !important; }
+.theme-text-sub    { color: var(--text-sub) !important; }
+
+/* In light mode, automatically convert legacy dark background utility classes */
+html.light .bg-\[\#0D0D0D\],
+html.light .bg-\[\#0A0A0A\],
+html.light .bg-\[\#111\],
+html.light .bg-dark-bg {
+  background-color: var(--bg-page) !important;
+}
+
+html.light nav,
+html.light .bg-\[\#0D0D0D\]\/95 {
+  background-color: rgba(251, 249, 245, 0.95) !important;
+}
+
+html.light .bg-\[\#1A1A1A\],
+html.light .bg-dark-card {
+  background-color: var(--bg-card) !important;
+  box-shadow: 0 4px 20px var(--shadow-color) !important;
+}
+
+html.light .bg-\[\#141414\],
+html.light .bg-\[\#1F1F1F\] {
+  background-color: var(--bg-input) !important;
+}
+
+html.light .bg-\[\#222\],
+html.light .bg-\[\#242424\],
+html.light .bg-dark-hover {
+  background-color: var(--bg-hover) !important;
+}
+
+html.light .bg-\[\#2A2A2A\] {
+  background-color: var(--border-color) !important;
+}
+
+html.light .border-\[\#2A2A2A\],
+html.light .border-\[\#2E2E2E\],
+html.light .border-\[\#1E1E1E\],
+html.light .border-\[\#333\],
+html.light .border-dark-border {
+  border-color: var(--border-color) !important;
+}
+
+html.light .divide-\[\#2A2A2A\],
+html.light .divide-dark-border > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--border-color) !important;
+}
+
+html.light .text-white {
+  color: var(--text-main) !important;
+}
+
+html.light .text-gray-300,
+html.light .text-gray-400 {
+  color: var(--text-muted) !important;
+}
+
+html.light .text-gray-500 {
+  color: var(--text-sub) !important;
+}
+
+html.light .hover\:bg-white\/5:hover,
+html.light .hover\:bg-white\/10:hover {
+  background-color: var(--bg-hover) !important;
+}
+
+/* Force white text on elements intended to be white regardless of theme */
+.keep-white,
+html.light .keep-white,
+.badge-red,
+.badge-green,
+.badge-purple,
+.badge-blue,
+.badge-pink,
+.badge-orange,
+html.light .badge-red,
+html.light .badge-green,
+html.light .badge-purple,
+html.light .badge-blue,
+html.light .badge-pink,
+html.light .badge-orange {
+  color: #FFFFFF !important;
+}
+
+html.light .badge-gold {
+  color: #1C1917 !important;
+}
+
+html.light select option {
+  background-color: var(--bg-surface);
+  color: var(--text-main);
+}
+
+/* ─── Button Styles ──────────────────────────────────── */
+.btn-primary {
+  @apply bg-primary text-[#0D0D0D] font-semibold px-6 py-3 rounded-xl
+         hover:bg-primary-light transition-all duration-200 inline-flex
+         items-center gap-2 cursor-pointer shadow-md;
+}
+
+html.light .btn-primary,
+html.light .bg-primary.text-\[\#0D0D0D\] {
+  color: #FFFFFF !important;
+}
+
+.btn-outline {
+  @apply border border-primary text-primary font-semibold px-6 py-3 rounded-xl
+         hover:bg-primary hover:text-white transition-all duration-200
+         inline-flex items-center gap-2 cursor-pointer;
+}
+
+.btn-ghost {
+  @apply text-gray-300 hover:text-primary transition-colors duration-200
+         inline-flex items-center gap-2 cursor-pointer;
+}
+
+.section-title {
+  @apply font-playfair text-3xl md:text-4xl font-bold text-white;
+}
+
+.gold-line {
+  @apply w-14 h-0.5 bg-primary rounded-full;
+}
+
+.card-dark {
+  @apply bg-dark-card border border-dark-border rounded-2xl overflow-hidden
+         hover:border-primary/40 transition-all duration-300;
+}
+
+.badge {
+  @apply text-xs font-bold px-2.5 py-1 rounded-full uppercase tracking-wide;
+}
+
+.badge-gold  { @apply badge bg-primary text-[#0D0D0D]; }
+.badge-red   { @apply badge bg-red-500 text-white; }
+.badge-green { @apply badge bg-emerald-500 text-white; }
+.badge-purple{ @apply badge bg-purple-500 text-white; }
+.badge-blue  { @apply badge bg-blue-500 text-white; }
+.badge-pink  { @apply badge bg-pink-500 text-white; }
+.badge-orange{ @apply badge bg-orange-500 text-white; }
+
+.input-dark {
+  @apply w-full border rounded-xl px-4 py-3
+         placeholder-gray-500 focus:outline-none focus:border-primary
+         transition-colors;
+  background-color: var(--bg-input);
+  border-color: var(--border-color);
+  color: var(--text-main);
+}
+
+/* ─── Vue Transitions ────────────────────────────────── */
+.fade-enter-active, .fade-leave-active { transition: opacity 0.25s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+
+.slide-up-enter-active, .slide-up-leave-active { transition: all 0.3s ease; }
+.slide-up-enter-from, .slide-up-leave-to { transform: translateY(20px); opacity: 0; }
+
+.slide-right-enter-active, .slide-right-leave-active { transition: all 0.35s ease; }
+.slide-right-enter-from { transform: translateX(100%); }
+.slide-right-leave-to { transform: translateX(100%); }
+
+.slide-down-enter-active, .slide-down-leave-active { transition: all 0.25s ease; }
+.slide-down-enter-from, .slide-down-leave-to { transform: translateY(-10px); opacity: 0; }
+
+.scale-enter-active, .scale-leave-active { transition: all 0.2s ease; }
+.scale-enter-from, .scale-leave-to { transform: scale(0.95); opacity: 0; }
+
+/* ─── Hero & Banner Gradients ────────────────────────── */
+.hero-gradient,
+.hero-overlay-horizontal {
+  background: linear-gradient(
+    to right,
+    var(--hero-overlay) 0%,
+    var(--hero-overlay-mid) 55%,
+    transparent 100%
+  );
+}
+
+.hero-overlay-vertical {
+  background: linear-gradient(
+    to top,
+    var(--bg-page) 0%,
+    var(--hero-overlay-mid) 50%,
+    transparent 100%
+  );
+}
+
+.app-banner-bg {
+  background: linear-gradient(to bottom right, #1A1A1A, #0D0D0D);
+}
+
+html.light .app-banner-bg {
+  background: linear-gradient(to bottom right, #FFFFFF, #F5EFE6) !important;
+  border-color: var(--border-color) !important;
+}
+
+.app-badge-btn {
+  background-color: #FFFFFF;
+  color: #0D0D0D;
+}
+
+html.light .app-badge-btn {
+  background-color: #1C1917 !important;
+  color: #FFFFFF !important;
+}
+
+html.light .app-badge-btn p {
+  color: #FFFFFF !important;
+}
+
+/* ─── Gold Glow ──────────────────────────────────────── */
+.gold-glow {
+  box-shadow: 0 0 20px rgba(200, 169, 110, 0.3);
+}
+
+/* ─── Star Rating ────────────────────────────────────── */
+.star-filled { color: var(--color-primary); }
+.star-empty  { color: var(--border-color); }
+
+/* ─── Infinite Dynamic Marquee Animations ────────────── */
+@keyframes marquee-scroll-left {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes marquee-scroll-right {
+  0% { transform: translateX(-50%); }
+  100% { transform: translateX(0); }
+}
+
+.animate-marquee-left {
+  display: flex;
+  width: max-content;
+  animation: marquee-scroll-left 42s linear infinite;
+  will-change: transform;
+}
+
+.animate-marquee-right {
+  display: flex;
+  width: max-content;
+  animation: marquee-scroll-right 46s linear infinite;
+  will-change: transform;
+}
+
+.animate-marquee-left:hover,
+.animate-marquee-right:hover,
+.marquee-paused {
+  animation-play-state: paused !important;
+}
+
+.marquee-mask {
+  mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+}
