@@ -227,7 +227,7 @@
                 </div>
                 <div>
                   <label class="block text-xs text-gray-400 mb-1.5 uppercase tracking-wide">Branch *</label>
-                  <select v-model="form.branchName" required class="input-dark">
+                  <select v-model="form.branchName" @change="onBranchChange" required class="input-dark">
                     <option value="">Select branch</option>
                     <option v-for="b in branchesForSelectedCity" :key="b.name" :value="b.name">
                       {{ b.name }}
@@ -244,7 +244,7 @@
                     type="button"
                     @click="fillAddressWithGPS"
                     :disabled="locationStore.isLocating"
-                    class="text-[11px] text-primary hover:text-primary-light flex items-center gap-1 font-medium transition-colors"
+                    class="text-[11px] text-primary hover:text-primary-light flex items-center gap-1 font-medium transition-colors cursor-pointer"
                   >
                     <span>📍</span>
                     {{ locationStore.isLocating ? 'Detecting GPS...' : 'Auto-Fill My Exact Location' }}
@@ -252,6 +252,7 @@
                 </div>
                 <textarea
                   v-model="form.address"
+                  @blur="handleAddressBlur"
                   required
                   rows="3"
                   placeholder="e.g. House #14, Street 3, Kohinoor City, Faisalabad (or click 'Auto-Fill My Exact Location' above)"
@@ -260,6 +261,56 @@
                 <p v-if="form.address && locationStore.userCoordinates" class="text-[11px] text-emerald-400 mt-1 flex items-center gap-1">
                   <span>✓</span> Verified with GPS ({{ locationStore.userCoordinates.lat.toFixed(4) }}°N, {{ locationStore.userCoordinates.lng.toFixed(4) }}°E)
                 </p>
+              </div>
+
+              <!-- 🛵 10 KM Delivery Zone Status Card -->
+              <div
+                class="rounded-xl p-3.5 border transition-all text-xs"
+                :class="[
+                  form.orderType === 'Pickup'
+                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-200'
+                    : currentDeliveryEligibility.eligible
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                      : 'bg-red-500/15 border-red-500/40 text-red-300'
+                ]"
+              >
+                <div class="flex items-start justify-between gap-2">
+                  <div class="space-y-1">
+                    <div class="flex items-center gap-1.5 font-bold">
+                      <span v-if="form.orderType === 'Pickup'">🏪 Store Pickup Selected</span>
+                      <span v-else-if="currentDeliveryEligibility.eligible">🟢 Within 10 km Delivery Zone</span>
+                      <span v-else>🚫 Delivery Unavailable (Outside 10 km Zone)</span>
+                    </div>
+                    <p class="text-[11px] opacity-90 leading-relaxed">
+                      {{ currentDeliveryEligibility.message }}
+                    </p>
+                  </div>
+                  <span
+                    v-if="form.orderType === 'Delivery' && currentDeliveryEligibility.distanceKm !== null"
+                    class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold flex-shrink-0"
+                    :class="currentDeliveryEligibility.eligible ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/30 text-red-200'"
+                  >
+                    {{ currentDeliveryEligibility.distanceKm }} km / 10 km max
+                  </span>
+                </div>
+
+                <!-- 1-Click Action to switch to Pickup if outside 10 km delivery radius -->
+                <div v-if="form.orderType === 'Delivery' && !currentDeliveryEligibility.eligible" class="mt-2.5 pt-2.5 border-t border-red-500/20 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    @click="form.orderType = 'Pickup'"
+                    class="bg-amber-500 hover:bg-amber-400 text-black font-bold px-3 py-1.5 rounded-lg text-xs transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>🏪</span> Switch to Store Pickup (Free)
+                  </button>
+                  <button
+                    type="button"
+                    @click="detectLocationForCart"
+                    class="bg-white/10 hover:bg-white/20 text-white font-medium px-3 py-1.5 rounded-lg text-xs transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>📍</span> Re-check My Live Location
+                  </button>
+                </div>
               </div>
 
               <!-- Notes -->
@@ -372,12 +423,20 @@
             <div v-else class="mt-4">
               <button
                 @click="placeOrder"
-                :disabled="isOrdering"
+                :disabled="isOrdering || (form.orderType === 'Delivery' && !currentDeliveryEligibility.eligible)"
                 class="w-full bg-primary text-[#0D0D0D] font-bold py-4 rounded-2xl hover:bg-primary-light transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-base shadow-lg shadow-primary/20"
+                :class="form.orderType === 'Delivery' && !currentDeliveryEligibility.eligible ? '!bg-red-500/20 !text-red-300 !border !border-red-500/40' : ''"
               >
                 <span v-if="isOrdering" class="animate-spin">⏳</span>
+                <span v-else-if="form.orderType === 'Delivery' && !currentDeliveryEligibility.eligible">🚫</span>
                 <span v-else>🎉</span>
-                {{ isOrdering ? 'Placing Order...' : `Place Order — Rs. ${grandTotal.toLocaleString()}` }}
+                {{
+                  isOrdering
+                    ? 'Placing Order...'
+                    : (form.orderType === 'Delivery' && !currentDeliveryEligibility.eligible)
+                      ? 'Delivery Unavailable (>10 km) — Switch to Pickup'
+                      : `Place Order — Rs. ${grandTotal.toLocaleString()}`
+                }}
               </button>
             </div>
 
@@ -620,7 +679,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
-import { useLocationStore } from '@/stores/location'
+import { useLocationStore, calculateDistanceKm, checkDeliveryEligibility, geocodeAddress, MAX_DELIVERY_RADIUS_KM } from '@/stores/location'
 import { useAuthStore } from '@/stores/auth'
 import { cities, branches } from '@/data/products'
 import { API_BASE } from '@/lib/api'
@@ -726,6 +785,27 @@ const branchesForSelectedCity = computed(() => {
   return branches.filter(b => b.city.toLowerCase() === form.value.city.toLowerCase())
 })
 
+const selectedBranchObj = computed(() => {
+  if (form.value.branchName) {
+    const found = branches.find(b => b.name === form.value.branchName)
+    if (found) return found
+  }
+  return locationStore.selectedBranch || branches[0]
+})
+
+const currentDeliveryEligibility = computed(() => {
+  if (form.value.orderType === 'Pickup') {
+    return {
+      eligible: true,
+      reason: 'pickup',
+      message: `Store pickup selected from ${selectedBranchObj.value?.name || 'our kitchen'}. Collect directly at the counter.`,
+      distanceKm: locationStore.detectedDistance,
+      maxRadiusKm: MAX_DELIVERY_RADIUS_KM,
+    }
+  }
+  return checkDeliveryEligibility(selectedBranchObj.value, locationStore.userCoordinates, form.value.city)
+})
+
 // Sync when locationStore updates (e.g. from GPS auto-detect or reverse geocoding)
 watch(
   () => locationStore.selectedBranch,
@@ -753,6 +833,28 @@ function onCityChange() {
   if (branch) {
     form.value.branchName = branch.name
     locationStore.setBranch(branch)
+  }
+}
+
+function onBranchChange() {
+  const branch = branches.find(b => b.name === form.value.branchName)
+  if (branch) {
+    locationStore.setBranch(branch)
+  }
+}
+
+async function handleAddressBlur() {
+  if (!form.value.address || form.value.address.trim().length < 4) return
+  // If user coordinates aren't already set, geocode the entered address to check 10km radius
+  if (!locationStore.userCoordinates) {
+    const geo = await geocodeAddress(form.value.address, form.value.city)
+    if (geo) {
+      locationStore.userCoordinates = { lat: geo.lat, lng: geo.lng }
+      if (selectedBranchObj.value?.coords) {
+        const dist = Math.round(calculateDistanceKm(geo.lat, geo.lng, selectedBranchObj.value.coords.lat, selectedBranchObj.value.coords.lng) * 10) / 10
+        locationStore.detectedDistance = dist
+      }
+    }
   }
 }
 
@@ -935,9 +1037,17 @@ function placeOrder() {
     alert('Please fill in all required fields!')
     return
   }
-  if (form.value.orderType === 'Delivery' && !form.value.address) {
-    alert('Please enter your delivery address!')
-    return
+  if (form.value.orderType === 'Delivery') {
+    if (!form.value.address) {
+      alert('Please enter your delivery address!')
+      return
+    }
+
+    // 10 KM Delivery Radius & Out of City Enforcement
+    if (!currentDeliveryEligibility.value.eligible) {
+      alert(`🚫 Delivery Unavailable:\n\n${currentDeliveryEligibility.value.message}\n\nPlease switch to "Store Pickup" or select a branch in your area.`)
+      return
+    }
   }
 
   // Open OTP verification modal & dispatch 6-digit code to customer email
@@ -961,14 +1071,14 @@ function executeFinalOrder() {
       city: form.value.city,
     },
     orderType: form.value.orderType,
-    fulfillingBranch: locationStore.selectedBranch || { name: form.value.branchName, city: form.value.city },
+    fulfillingBranch: selectedBranchObj.value || { name: form.value.branchName, city: form.value.city },
     items: [...cartStore.items],
     subtotal: cartStore.subtotal,
     deliveryFee: cartStore.deliveryFee,
     discount: promoDiscount.value,
     total: grandTotal.value,
     paymentMethod: form.value.payment,
-    distanceKm: locationStore.detectedDistance,
+    distanceKm: currentDeliveryEligibility.value.distanceKm || locationStore.detectedDistance,
     date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
   }
 

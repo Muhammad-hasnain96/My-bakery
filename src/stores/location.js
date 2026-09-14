@@ -81,6 +81,98 @@ export async function reverseGeocodeAddress(lat, lng, defaultCity = '') {
   return `Near ${defaultCity || 'Current Location'} (GPS: ${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E)`
 }
 
+// Maximum allowed delivery radius in Kilometers
+export const MAX_DELIVERY_RADIUS_KM = 10
+
+// Forward Geocoding: address text -> GPS coords
+export async function geocodeAddress(address, city = '') {
+  if (!address || address.trim().length < 3) return null
+  try {
+    const query = `${address}, ${city}, Pakistan`
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 4500)
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`,
+      {
+        signal: controller.signal,
+        headers: { 'Accept': 'application/json' },
+      }
+    )
+    clearTimeout(timeoutId)
+    if (response.ok) {
+      const data = await response.json()
+      if (data && data.length > 0) {
+        return {
+          lat: parseFloat(data[0].lat),
+          lng: parseFloat(data[0].lon),
+          displayName: data[0].display_name,
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Geocoding address error:', e)
+  }
+  return null
+}
+
+// Check if a customer delivery is eligible (under 10 km and same city)
+export function checkDeliveryEligibility(branch, userCoords, customerCity = '') {
+  if (!branch) {
+    return {
+      eligible: false,
+      reason: 'no_branch',
+      message: 'Please select a branch to proceed.',
+      distanceKm: null,
+      maxRadiusKm: MAX_DELIVERY_RADIUS_KM,
+    }
+  }
+
+  // 1. City boundary check
+  const branchCity = (branch.city || '').toLowerCase().trim()
+  const custCity = (customerCity || '').toLowerCase().trim()
+  if (branchCity && custCity && branchCity !== custCity) {
+    return {
+      eligible: false,
+      reason: 'out_of_city',
+      message: `Selected branch (${branch.name}) is located in ${branch.city} and cannot deliver to ${customerCity}. Delivery is strictly restricted to ${branch.city} within 10 km.`,
+      distanceKm: null,
+      maxRadiusKm: MAX_DELIVERY_RADIUS_KM,
+      branchCity: branch.city,
+      customerCity,
+    }
+  }
+
+  // 2. Distance check if coordinates are present
+  if (userCoords?.lat && userCoords?.lng && branch?.coords?.lat && branch?.coords?.lng) {
+    const dist = Math.round(calculateDistanceKm(userCoords.lat, userCoords.lng, branch.coords.lat, branch.coords.lng) * 10) / 10
+    if (dist > MAX_DELIVERY_RADIUS_KM) {
+      return {
+        eligible: false,
+        reason: 'exceeds_radius',
+        distanceKm: dist,
+        maxRadiusKm: MAX_DELIVERY_RADIUS_KM,
+        message: `Delivery unavailable: Your location is ${dist} km away from ${branch.name}. We strictly deliver within a ${MAX_DELIVERY_RADIUS_KM} km radius. Please choose Store Pickup instead.`,
+      }
+    }
+    return {
+      eligible: true,
+      reason: 'ok',
+      distanceKm: dist,
+      maxRadiusKm: MAX_DELIVERY_RADIUS_KM,
+      message: `Within 10 km delivery zone (${dist} km from ${branch.name}).`,
+    }
+  }
+
+  // Coordinates not yet detected, but same city
+  return {
+    eligible: true,
+    reason: 'city_matched_unverified_coords',
+    distanceKm: null,
+    maxRadiusKm: MAX_DELIVERY_RADIUS_KM,
+    message: `Delivery available in ${branch.city} within ${MAX_DELIVERY_RADIUS_KM} km of ${branch.name}.`,
+  }
+}
+
 export const useLocationStore = defineStore('location', () => {
   const savedBranch = JSON.parse(localStorage.getItem('selectedBranch') || 'null')
   const defaultBranch = branches.find(b => b.id === 'fsd-kohinoor') || branches[0]
@@ -199,8 +291,25 @@ export const useLocationStore = defineStore('location', () => {
     selectedCity.value = branch.city
     localStorage.setItem('selectedBranch', JSON.stringify(branch))
     localStorage.setItem('selectedCity', branch.city)
+
+    // Recalculate distance to this branch if user GPS is known
+    if (userCoordinates.value && branch?.coords) {
+      const dist = calculateDistanceKm(
+        userCoordinates.value.lat,
+        userCoordinates.value.lng,
+        branch.coords.lat,
+        branch.coords.lng
+      )
+      detectedDistance.value = Math.round(dist * 10) / 10
+    }
+
     fetchBranchProducts()
   }
+
+  // Active delivery eligibility for currently selected branch
+  const deliveryStatus = computed(() => {
+    return checkDeliveryEligibility(selectedBranch.value, userCoordinates.value, selectedCity.value)
+  })
 
   function setCity(city) {
     selectedCity.value = city
@@ -226,6 +335,8 @@ export const useLocationStore = defineStore('location', () => {
     detectedDistance,
     branchProducts,
     liveBranchProducts,
+    deliveryStatus,
+    MAX_DELIVERY_RADIUS_KM,
     fetchBranchProducts,
     findNearestBranch,
     detectLiveLocation,

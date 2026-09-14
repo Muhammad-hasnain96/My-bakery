@@ -156,6 +156,26 @@ app.post('/api/orders', async (req, res) => {
       return res.status(400).json({ error: 'Missing required order fields' })
     }
 
+    // 10 KM Delivery Radius & Out-of-City Boundary Enforcement
+    if (orderType === 'Delivery') {
+      const branchCity = (fulfillingBranch.city || '').toLowerCase().trim()
+      const customerCity = (customer.city || '').toLowerCase().trim()
+
+      // Reject cross-city deliveries (e.g. Faisalabad branch delivering to Lahore)
+      if (branchCity && customerCity && branchCity !== customerCity) {
+        return res.status(400).json({
+          error: `Delivery unavailable: ${fulfillingBranch.name} is in ${fulfillingBranch.city} and cannot deliver out of city to ${customer.city}. Please select Store Pickup or a branch in ${customer.city}.`
+        })
+      }
+
+      // Reject deliveries exceeding 10 km
+      if (distanceKm !== undefined && distanceKm !== null && Number(distanceKm) > 10.0) {
+        return res.status(400).json({
+          error: `Delivery radius exceeded: Your location is ${distanceKm} km away. Maximum allowed delivery range is 10 km from ${fulfillingBranch.name}. Please select Store Pickup instead.`
+        })
+      }
+    }
+
     if (supabase) {
       const orderData = {
         orderNumber,

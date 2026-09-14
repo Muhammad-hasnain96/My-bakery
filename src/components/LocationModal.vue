@@ -83,7 +83,13 @@
                   <p class="text-xs text-gray-400 truncate">{{ locationStore.selectedBranch.address }}</p>
                 </div>
                 <div v-if="locationStore.detectedDistance !== null" class="text-right flex-shrink-0">
-                  <span class="badge badge-green text-[10px]">{{ locationStore.detectedDistance }} km away</span>
+                  <span
+                    class="badge text-[10px] font-bold"
+                    :class="locationStore.detectedDistance <= 10 ? 'badge-green' : 'bg-red-500/20 text-red-300 border border-red-500/30'"
+                  >
+                    {{ locationStore.detectedDistance }} km
+                    {{ locationStore.detectedDistance <= 10 ? '(Delivery & Pickup)' : '(Outside 10 km — Pickup Only)' }}
+                  </span>
                 </div>
               </div>
 
@@ -128,8 +134,8 @@
           <!-- Footer note -->
           <div class="px-5 py-3.5 bg-[#141414] border-t border-[#2A2A2A]">
             <p class="text-xs text-gray-400 text-center flex items-center justify-center gap-1.5">
-              <span class="text-primary font-bold">⚡</span>
-              Superfast delivery in <strong>45–60 mins</strong> from your nearest kitchen
+              <span class="text-primary font-bold">🛵</span>
+              Delivery available within <strong>10 km radius</strong> of your local kitchen
             </p>
           </div>
         </div>
